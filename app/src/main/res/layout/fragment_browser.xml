@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ProgressBar
+        android:id="@+id/detail_progressbar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/default_3dp"
+        android:progressDrawable="@drawable/progress_bar_bg"
+        style="?android:attr/progressBarStyleHorizontal"/>
+    <lib.homhomlib.design.SlidingLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/webview_background_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:sliding_mode="top"
+        app:top_max="100dp"
+        app:background_view="@layout/webview_background_view">
+        <!--background_view为你的背景布局-->
+        <WebView
+            android:id="@+id/detail_webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="vertical"
+            android:scrollbarSize="0dip"></WebView>
+    </lib.homhomlib.design.SlidingLayout>
+</LinearLayout>
