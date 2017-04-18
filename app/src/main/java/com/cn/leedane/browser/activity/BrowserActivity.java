@@ -1,5 +1,7 @@
 package com.cn.leedane.browser.activity;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -8,16 +10,20 @@ import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.cn.leedane.browser.R;
 import com.cn.leedane.browser.adapter.BrowserTitlePagerAdapter;
 import com.cn.leedane.browser.adapter.FragmentPagerAdapter;
+import com.cn.leedane.browser.application.BaseApplication;
 import com.cn.leedane.browser.customview.ScaleTransitionPagerTitleView;
 import com.cn.leedane.browser.fragment.BrowserFragment;
 import com.cn.leedane.browser.util.ToastUtil;
@@ -55,9 +61,27 @@ public class BrowserActivity extends BaseActivity{
 
     private int mTitleAlpha = 100;
 
-    private int mTitleHeight = 0;
+    private float mTitleHeight = 0f;
 
     private View mTitleView;
+
+    private View mRootView;
+
+    /**
+     * 获取状态栏的高度
+     */
+    private int mBarHeight;
+
+    /**
+     * 容器的高度
+     */
+    private int mContraierHeight;
+
+    /**
+     * 距离顶部的距离
+     */
+    private float marginTop = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,10 +95,17 @@ public class BrowserActivity extends BaseActivity{
         mTitleView =  findViewById(R.id.baeselayout_navbar);
         mTitleView.setOnClickListener(this);
 
-        mTitleHeight = mTitleView.getHeight();
+        //mTitleHeight = mTitleView.getHeight(); 获取到的高度是0
+        int w = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        int h = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        mTitleView.measure(w, h);
+        mTitleHeight = mTitleView.getMeasuredHeight();
+        marginTop = mTitleHeight;
 
         mViewPager = (ViewPager) findViewById(R.id.browser_viewpager);
         mViewPager.setAdapter(titlePagerAdapter);
+
+        mRootView = findViewById(R.id.root_layout);
 
         for(int i = 0 ; i <links.length; i++){
             Bundle bundle = new Bundle();
@@ -83,7 +114,25 @@ public class BrowserActivity extends BaseActivity{
             mFragments.add(BrowserFragment.newInstance(bundle));
         }
 
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            mBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
+
+        /*int w1 = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        int h1 = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        findViewById(R.id.root_layout).measure(w1, h1);
+        mRootHeight = findViewById(R.id.root_layout).getMeasuredHeight();*/
+
         initMagicIndicator6();
+
+        WindowManager wm = (WindowManager) BrowserActivity.this
+                .getSystemService(Context.WINDOW_SERVICE);
+
+        //int width = wm.getDefaultDisplay().getWidth();
+        int height = wm.getDefaultDisplay().getHeight();
+
+        mContraierHeight = height - (int)mTitleHeight - mBarHeight;
     }
 
     private void initMagicIndicator6() {
@@ -134,6 +183,7 @@ public class BrowserActivity extends BaseActivity{
         } else {
             super.onBackPressed();
         }*/
+        super.onBackPressed();
     }
 
     @Override
@@ -146,6 +196,7 @@ public class BrowserActivity extends BaseActivity{
         }
     }
 
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         //继承了Activity的onTouchEvent方法，直接监听点击事件
@@ -156,20 +207,60 @@ public class BrowserActivity extends BaseActivity{
             y1 = event.getY();
         }
 
-        if(event.getAction() == MotionEvent.ACTION_MOVE) {
+        if(event.getAction() == MotionEvent.ACTION_UP) {
             //当手指移动的时候的时候
             x2 = event.getX();
             y2 = event.getY();
-            if(y1 - y2 > 100) {
-                ToastUtil.success(BrowserActivity.this, "向上滑动", Toast.LENGTH_SHORT);
-                mTitleView.getBackground().setAlpha(mTitleAlpha --);
-            } else if(y2 - y1 > 100) {
-                ToastUtil.success(BrowserActivity.this, "向下滑动", Toast.LENGTH_SHORT);
-                mTitleView.getBackground().setAlpha(mTitleAlpha ++);
+            int he = mTitleView.getHeight();
+
+
+            int[] local = new int[2];
+            mTitleView.getLocationOnScreen(local);
+            if(y1 > y2 && y1 - y2 > 100) { //上滑
+                // ObjectAnimator.ofFloat(mTitleView, "translationY", 100, 210 - (y1 - y2));
+                //ToastUtil.success(BrowserActivity.this, "向上滑动", Toast.LENGTH_SHORT);
+                //mTitleView.getBackground().setAlpha(mTitleAlpha --);
+                ObjectAnimator anim =ObjectAnimator.ofFloat(mTitleView, "translationY", 0, -mTitleHeight);
+                anim.setDuration(5);
+                anim.start();
+                Log.i("browserMove", "he="+ he +", y1="+ y1 +", y2="+ y2+ ", result="+ -mTitleHeight);
+                LinearLayout.LayoutParams linearParams =(LinearLayout.LayoutParams) mRootView.getLayoutParams(); //取控件textView当前的布局参数
+                linearParams.height = mContraierHeight + (int)mTitleHeight;// 控件的高强制设成20
+                mRootView.setLayoutParams(linearParams); //使设置好的布局参数应用到控件
+                findViewById(R.id.root_layout).setY(mBarHeight);
+            } else if(y2 > y1 && y2 - y1 > 100) {
+                //ObjectAnimator.ofFloat(mTitleView, "translationY", 100, 210 + (y2 - y1));
+                //ToastUtil.success(BrowserActivity.this, "向下滑动", Toast.LENGTH_SHORT);
+                //mTitleView.getBackground().setAlpha(mTitleAlpha ++);
+                ObjectAnimator anim =ObjectAnimator.ofFloat(mTitleView, "translationY", -mTitleHeight, 0);
+                anim.setDuration(5);
+                anim.start();
+                //Log.i("browserMove", "he="+ he +", y1="+ y1 +", y2="+ y2+ ", result="+ top);
+                LinearLayout.LayoutParams linearParams =(LinearLayout.LayoutParams) mRootView.getLayoutParams(); //取控件textView当前的布局参数
+                linearParams.height = mContraierHeight - (int)mTitleHeight;// 控件的高强制设成20
+                mRootView.setLayoutParams(linearParams); //使设置好的布局参数应用到控件
+                findViewById(R.id.root_layout).setY(mTitleHeight);
+
             } else if(x1 - x2 > 100) {
                 ToastUtil.success(BrowserActivity.this, "向左滑动", Toast.LENGTH_SHORT);
+                ObjectAnimator anim =ObjectAnimator.ofFloat(mTitleView, "translationY", 0, -mTitleHeight);
+                anim.setDuration(5);
+                anim.start();
+
+                LinearLayout.LayoutParams linearParams =(LinearLayout.LayoutParams) mRootView.getLayoutParams(); //取控件textView当前的布局参数
+                linearParams.height = mContraierHeight + (int)mTitleHeight;// 控件的高强制设成20
+                mRootView.setLayoutParams(linearParams); //使设置好的布局参数应用到控件
+                findViewById(R.id.root_layout).setY(mBarHeight);
             } else if(x2 - x1 > 100) {
                 ToastUtil.success(BrowserActivity.this, "向右滑动", Toast.LENGTH_SHORT);
+                ObjectAnimator anim =ObjectAnimator.ofFloat(mTitleView, "translationY", 0, -mTitleHeight);
+                anim.setDuration(5);
+                anim.start();
+                //mRootView.setY(mBarHeight);
+                LinearLayout.LayoutParams linearParams =(LinearLayout.LayoutParams) mRootView.getLayoutParams(); //取控件textView当前的布局参数
+                linearParams.height = mContraierHeight + (int)mTitleHeight;// 控件的高强制设成20
+                mRootView.setLayoutParams(linearParams); //使设置好的布局参数应用到控件
+                findViewById(R.id.root_layout).setY(mBarHeight);
             }
         }
         /*if(event.getAction() == MotionEvent.ACTION_DOWN) {
